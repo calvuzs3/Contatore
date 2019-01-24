@@ -1,0 +1,13 @@
+<resources>
+    <string name="app_name" translatable="false">Contatore</string>
+
+    <string name="str_start" translatable="false">START</string>
+    <string name="str_stop" translatable="false">STOP</string>
+    <string name="str_00" translatable="false">00</string>
+
+    <string name="str_up">su</string>
+    <string name="str_down">giù</string>
+    <string name="str_separator">:</string>
+    <string name="str_seconds">secondi</string>
+    <string name="str_minutes">minuti</string>
+</resources>
