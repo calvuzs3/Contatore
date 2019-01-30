@@ -1,16 +1,9 @@
 package org.varonesoft.luke.countdown;
 
-import android.content.Context;
 import android.media.AudioManager;
-import android.media.MediaPlayer;
-import android.media.RingtoneManager;
-import android.media.ToneGenerator;
-import android.net.Uri;
 import android.os.CountDownTimer;
-import android.util.Log;
 import android.widget.TextView;
 
-import java.io.IOException;
 import java.util.Locale;
 
 public class Counter {
@@ -27,7 +20,7 @@ public class Counter {
 
     private CountDownTimer mICT;                // first countdown
     private CountDownTimer mCT;                 // second
-    private long mInterval = 1000L;       // interval onTick()
+    private long mInterval = 1000L;       // interval onPreCountTick()
     private long mDelay = 100L;           // Delay
     private long mInitialCount = 5000L;   // millis before start
     private long mCount = 60000L;             // counter 1min
@@ -36,34 +29,11 @@ public class Counter {
     private TextView mSecondsView;               // the view to adjourn
 
     private boolean mInited = false;
-    private boolean mTone = false;
-    private boolean mPlaySound = false;
 
-    private Context mContext;
-    private ToneGenerator toneGenerator;
-
-    private OnFinishListener mListener;
-
-    private Uri mSoundUri;
-    private MediaPlayer mMediaPlayer;
-    private AudioManager mAudioManager;
+    private CounterListener mListener;
 
     // private constructor
-    private Counter() {    }
-
-    // Sets the context, init some..
-    private void setContext(Context context) throws IllegalArgumentException,
-            SecurityException,
-            IllegalStateException,
-            IOException {
-
-        this.mContext = context;
-
-        mSoundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM);
-        mMediaPlayer = new MediaPlayer();
-        mMediaPlayer.setDataSource(mContext, mSoundUri);
-        mAudioManager = (AudioManager) mContext.getSystemService(Context.AUDIO_SERVICE);
-
+    private Counter() {
     }
 
     // Pre-countdown
@@ -80,7 +50,7 @@ public class Counter {
                 // Adjourn th view
                 mMinutesView.setText("00");
                 mSecondsView.setText(String.format(LOCALE, FORMAT,
-                        (mInitialCount + mDelay) / (1000) %60));
+                        (mInitialCount + mDelay) / (1000) % 60));
                 // Start the real countdown
                 _start();
             }
@@ -90,8 +60,11 @@ public class Counter {
                 // Adjourn th view
                 mMinutesView.setText("");
                 mSecondsView.setText(String.format(LOCALE, FORMAT,
-                        (millisUntilFinished + mDelay) / (1000) %60));
-                // Emits a beep
+                        (millisUntilFinished + mDelay) / (1000) % 60));
+                // Emits a beep?
+                if (mListener != null) {
+                    mListener.onPreCountTick();
+                }
             }
         };
         mICT.start();
@@ -100,35 +73,30 @@ public class Counter {
     // The real thing
     private void _start() {
         if (mCount < 1000) return;
-        // Adjourn th view
+        // Adjourn th views
         mMinutesView.setText(String.format(LOCALE, FORMAT,
-                (mCount + mDelay) / (60*1000) %60));
+                (mCount + mDelay) / (60 * 1000) % 60));
         mSecondsView.setText(String.format(LOCALE, FORMAT,
-                (mCount + mDelay) / (1000) %60));
+                (mCount + mDelay) / (1000) % 60));
 
         mCT = new CountDownTimer(mCount, mInterval) {
             @Override
             public void onTick(long millisUntilFinished) {
-                // Emits a beep
                 // Adjourn th view
                 mMinutesView.setText(String.format(LOCALE, FORMAT,
-                        (millisUntilFinished + mDelay) / (60*1000) %60));
+                        (millisUntilFinished + mDelay) / (60 * 1000) % 60));
                 mSecondsView.setText(String.format(LOCALE, FORMAT,
-                        (millisUntilFinished + mDelay) / (1000) %60));
+                        (millisUntilFinished + mDelay) / (1000) % 60));
+                // Emits a beep?
             }
 
             @Override
             public void onFinish() {
-                // Callback
-                if (mListener != null) mListener.onFinish();
-                // Emits beeps or play sound
-                if (mContext == null) return;
-                if (mPlaySound) try {
-                    playSound(mContext);
-                } catch (IOException e) {
-                    Log.e("Counter", e.getMessage());
-                    e.printStackTrace();
-                }
+                // Adjourn th view
+                mMinutesView.setText("00");
+                mSecondsView.setText("00");
+                // Emits a beep?
+                if (mListener != null) mListener.onCountFinish();
                 // Free resources??
             }
         };
@@ -138,25 +106,6 @@ public class Counter {
     public void end() {
         if (mICT != null) mICT.cancel();
         if (mCT != null) mCT.cancel();
-    }
-
-    public void playSound(Context context) throws IllegalArgumentException,
-            SecurityException,
-            IllegalStateException,
-            IOException {
-//
-//        Uri soundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM);
-//        MediaPlayer mMediaPlayer = new MediaPlayer();
-//        mMediaPlayer.setDataSource(context, soundUri);
-//        final AudioManager audioManager = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
-
-        if (mAudioManager.getStreamVolume(AudioManager.STREAM_ALARM) != 0) {
-            mMediaPlayer.setAudioStreamType(AudioManager.STREAM_ALARM);
-            // Uncomment to play it repeatedly
-            // mMediaPlayer.setLooping(true);
-            mMediaPlayer.prepare();
-            mMediaPlayer.start();
-        }
     }
 
     public void addMinutes(long minutes) {
@@ -171,9 +120,12 @@ public class Counter {
             this.mCount = COUNT_MAX - 1000;
     }
 
-    // Interface
-    public interface OnFinishListener {
-        void onFinish();
+    // Interface to this object
+    public interface CounterListener {
+        // When the countdown has finished
+        void onCountFinish();
+        // When pre-countdown is ticking
+        void onPreCountTick();
     }
 
     // Builder
@@ -181,41 +133,33 @@ public class Counter {
 
         Counter counter = new Counter();
 
-        public Builder setContext(Context context) {
-            try {
-                counter.setContext(context);
-            } catch (IOException e) {
-                Log.e(Counter.class.getSimpleName(), "setContext Error");
-                e.printStackTrace();
-            }
-            return this;
-        }
-        public Builder setListener(OnFinishListener listener) {
+        public Builder setListener(CounterListener listener) {
             counter.mListener = listener;
             return this;
         }
+
         public Builder setMinutesView(TextView view) {
             counter.mMinutesView = view;
             return this;
         }
+
         public Builder setSecondsView(TextView view) {
             counter.mSecondsView = view;
             return this;
         }
-        public Builder setPlaySound(boolean sound) {
-            counter.mPlaySound = sound;
-            return this;
-        }
+
         public Builder setInitialTime(long time) {
             counter.mInitialCount = time;
             return this;
         }
+
         public Builder setCount(long time) {
             counter.mCount = time;
             return this;
         }
+
         public Counter build() throws InternalError {
-            if (counter.mCount > COUNT_MIN && counter.mCount < COUNT_MAX &&
+            if (counter.mCount >= COUNT_MIN && counter.mCount <= COUNT_MAX &&
                     counter.mMinutesView != null &&
                     counter.mSecondsView != null &&
                     counter.mInitialCount >= 0) {
