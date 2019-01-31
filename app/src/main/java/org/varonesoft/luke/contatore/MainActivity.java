@@ -16,16 +16,17 @@ import org.varonesoft.luke.countdown.Counter;
 
 import java.util.Locale;
 
+import static org.varonesoft.luke.countdown.Counter.ONEMINUTEMILLIS;
+import static org.varonesoft.luke.countdown.Counter.ONESECONDMILLIS;
+
 //import android.media.RingtoneManager;
 //import android.net.Uri;
 
 
-public class MainActivity extends AppCompatActivity implements Counter.CounterListener {
+public class MainActivity extends AppCompatActivity implements Counter.CounterListener, Counter.PreCounterListener {
 
     // TAG
     private static final String TAG = "Contatore";
-    private static final long ONESECONDMILLIS = 1000L;
-    private static final long ONEMINUTEMILLIS = 60 * 1000L;
 
     // Static initial counter time
     private static final long COUNT = 60000L;
@@ -84,11 +85,11 @@ public class MainActivity extends AppCompatActivity implements Counter.CounterLi
         textSeconds = findViewById(R.id.seconds);
 
         // Set preference
-        mPlaySound = true;
+        mCount = Preferences.getLastCounterUsed(this);
+        mPlaySound = Preferences.getPlaySoundPreference(this);
 
         // Init
         initWidgets();
-        initSound();
     }
 
     private void adjournViews() {
@@ -153,33 +154,26 @@ public class MainActivity extends AppCompatActivity implements Counter.CounterLi
     }
 
     private void playFinishSound() {
-
         mAudioState = AudioSTATE.isPlaying;
         if (mAudioManager.getStreamVolume(AudioManager.STREAM_ALARM) != 0) {
-//            mMediaPlayerFinish.setAudioStreamType(AudioManager.STREAM_ALARM);
-            // Do we want to play it repeatedly?
-            // mMediaPlayer.setLooping(true);
-//            try {
-//                mMediaPlayerFinish.prepare();
-//            } catch (Exception e) {
-//                Log.e(TAG, e.getMessage());
-//            }
-            mMediaPlayerFinish.start();
+            if (mMediaPlayerFinish != null) {
+                //            mMediaPlayerFinish.setAudioStreamType(AudioManager.STREAM_ALARM);
+                // Do we want to play it repeatedly?
+                //             mMediaPlayerFinish.setLooping(true);
+                mMediaPlayerFinish.start();
+            }
         }
     }
 
     private void playPreCountdownTickSound() {
         mAudioState = AudioSTATE.isPlaying;
         if (mAudioManager.getStreamVolume(AudioManager.STREAM_ALARM) != 0) {
-//            mMediaPlayerTick.setAudioStreamType(AudioManager.STREAM_ALARM);
-            // Do we want to play it repeatedly?
-            // mMediaPlayer.setLooping(true);
-//            try {
-//                mMediaPlayerTick.prepare();
-//            } catch (Exception e) {
-//                Log.e(TAG, e.getMessage());
-//            }
-            mMediaPlayerTick.start();
+            if (mMediaPlayerTick != null) {
+                //            mMediaPlayerTick.setAudioStreamType(AudioManager.STREAM_ALARM);
+                // Do we want to play it repeatedly?
+                //            mMediaPlayerTick.setLooping(true);
+                mMediaPlayerTick.start();
+            }
         }
     }
 
@@ -202,6 +196,8 @@ public class MainActivity extends AppCompatActivity implements Counter.CounterLi
     @Override
     protected void onResume() {
         super.onResume();
+        // Init the sound system
+        initSound();
         // Lets register our receiver
         if (mPlaySound) {
             registerReceiver(mAudioBecomingNoisyReciver, mAudioIntenteFilter);
@@ -215,6 +211,7 @@ public class MainActivity extends AppCompatActivity implements Counter.CounterLi
             unregisterReceiver(mAudioBecomingNoisyReciver);
         }
         if (mAudioState.equals(AudioSTATE.isPlaying)) {
+            // Stop the sound system
             stopPlaying();
         }
         super.onPause();
@@ -222,11 +219,18 @@ public class MainActivity extends AppCompatActivity implements Counter.CounterLi
 
     @Override
     protected void onStop() {
+        // Stop playing
+//        stopPlaying();
         // Release resources
         mMediaPlayerFinish.release();
         mMediaPlayerFinish = null;
         mMediaPlayerTick.release();
         mMediaPlayerTick = null;
+
+        // Set preference
+        Preferences.setLastCounterUsed(this, mCount);
+        Preferences.setPlaySoundPreference(this, mPlaySound);
+
         super.onStop();
     }
 
@@ -236,7 +240,8 @@ public class MainActivity extends AppCompatActivity implements Counter.CounterLi
                 .setCount(mCount)
                 .setMinutesView(textMinutes)
                 .setSecondsView(textSeconds)
-                .setListener(this)
+                .setCounterListener(this)
+                .setPreCounterListener(this)
                 .build();
         btnStart.setText(R.string.str_stop);
         btnStart.setOnClickListener(stopListener);
@@ -253,7 +258,6 @@ public class MainActivity extends AppCompatActivity implements Counter.CounterLi
     }
 
     private void stop() {
-//        mCounter = new Counter(10000, text);
         // First stop playing if it is
         if (mAudioState.equals(AudioSTATE.isPlaying))
             stopPlaying();
@@ -273,17 +277,34 @@ public class MainActivity extends AppCompatActivity implements Counter.CounterLi
         adjournViews();
     }
 
+    /**
+     * Interfaces
+     * Comunication with the Counter object
+     */
     @Override
     public void onCountFinish() {
+
+        // Playsound
         playFinishSound();
     }
 
     @Override
+    public void onCountTick() {
+        // nothing
+    }
+
+    @Override
+    public void onPreCountFinish() {
+        //nothing
+    }
+
+    @Override
     public void onPreCountTick() {
+        // Playsound
         playPreCountdownTickSound();
     }
 
-    // Sound related
+    // AudiSTATE
     private enum AudioSTATE {
         isPlaying,
         isPaused,
