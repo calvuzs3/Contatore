@@ -145,8 +145,10 @@ public class MainActivity extends AppCompatActivity implements Counter.CounterLi
         mAudioIntenteFilter = new IntentFilter(AudioManager.ACTION_AUDIO_BECOMING_NOISY);
         mAudioBecomingNoisyReciver = new BecomingNoisyReceiver();
 //        Uri mSoundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM);
-        mMediaPlayerFinish = MediaPlayer.create(this, R.raw.sound35);
-        mMediaPlayerTick = MediaPlayer.create(MainActivity.this, R.raw.sound35);
+        mMediaPlayerFinish = MediaPlayer.create(this,
+                R.raw.zapsplat_bell_service_disk_ring_slightly_broken_resonate_multiple_18041);
+        mMediaPlayerTick = MediaPlayer.create(MainActivity.this,
+                R.raw.zapsplat_bell_service_disk_ring_slightly_broken_resonate_18042);
 //        mMediaPlayer = new MediaPlayer();
 //        mMediaPlayer.setDataSource(MainActivity.this, mSoundUri);
 
