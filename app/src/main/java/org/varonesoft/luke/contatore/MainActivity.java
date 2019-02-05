@@ -4,6 +4,7 @@ import android.content.Context;
 import android.content.IntentFilter;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
+import android.os.Build;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
@@ -171,6 +172,8 @@ public class MainActivity extends AppCompatActivity implements Counter.CounterLi
         mAudioState = AudioSTATE.isPlaying;
         if (mAudioManager.getStreamVolume(AudioManager.STREAM_ALARM) != 0) {
             if (mMediaPlayerTick != null) {
+                if (mMediaPlayerTick.isPlaying())
+                    mMediaPlayerTick.seekTo(0);
                 //            mMediaPlayerTick.setAudioStreamType(AudioManager.STREAM_ALARM);
                 // Do we want to play it repeatedly?
                 //            mMediaPlayerTick.setLooping(true);
@@ -183,15 +186,15 @@ public class MainActivity extends AppCompatActivity implements Counter.CounterLi
         mAudioState = AudioSTATE.isStopped;
         mMediaPlayerTick.stop();
         try {
-             mMediaPlayerTick.prepare();
+            mMediaPlayerTick.prepare();
         } catch (Exception e) {
             Log.e(TAG, e.getMessage());
         }
         mMediaPlayerFinish.stop();
         try {
             mMediaPlayerFinish.prepare();
-        } catch (Exception e ){
-            Log.e(TAG,e.getMessage());
+        } catch (Exception e) {
+            Log.e(TAG, e.getMessage());
         }
     }
 
@@ -285,7 +288,6 @@ public class MainActivity extends AppCompatActivity implements Counter.CounterLi
      */
     @Override
     public void onCountFinish() {
-
         // Playsound
         playFinishSound();
     }
@@ -304,6 +306,15 @@ public class MainActivity extends AppCompatActivity implements Counter.CounterLi
     public void onPreCountTick() {
         // Playsound
         playPreCountdownTickSound();
+    }
+
+    @Override
+    public void finish() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            super.finishAndRemoveTask();
+        } else {
+            super.finish();
+        }
     }
 
     // AudiSTATE
